@@ -1,0 +1,5 @@
+# Datos descargados: pesan mucho y se pueden volver a bajar con el script
+datos/
+__pycache__/
+.venv/
+.ipynb_checkpoints/
