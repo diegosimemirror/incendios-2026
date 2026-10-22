@@ -1,0 +1,792 @@
+<meta charset="utf-8">
+<title>Incendios en Junín</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Layout: parte de situación. Portada breve y cuatro cifras; luego el tablero: mapa a la
+   izquierda (óptica territorial) y, al lado, el hospital de referencia con su árbol (óptica de
+   red). Al elegir un hospital, el mapa muestra solo su red. Debajo, distritos y puntos críticos;
+   luego criterios de evidencia, hallazgos, método y límites. */
+:root {
+  --bg: #f4f3f8;
+  --surface: #ffffff;
+  --fg: #1c1826;
+  --muted: #5d586c;
+  --line: #dedae8;
+  --line-strong: #bdb6cf;
+  --territorio: #6c3fb8;
+  --prio-alta: #8f6cc9;
+  --prio-media: #c6b6e6;
+  --prio-baja: #ebe5f6;
+  --prio-sin: #ffffff;
+  --fuego: #d7191c;
+  --fuego-72: #f07b2b;
+  --fuego-viejo: #f2c14e;
+  --borde-fuego: #4a3510;
+  --sin-evidencia: #a3a0ad;
+  --salud: #008f8f;
+  --salud-palida: #b9dede;
+  --exposicion: #6f6a7d;
+  --barra: #008f8f;
+  --critico: #b3261e;
+  --atencion: #c27c00;
+  --critico-suave: #fbe3e1;
+  --atencion-suave: #fdf0d5;
+  --expuesto-suave: #dff2f2;
+  --seleccion: #eef7f7;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #13111a; --surface: #1c1925; --fg: #ece9f4; --muted: #aaa4ba; --line: #312d3d; --line-strong: #4b4559;
+    --territorio: #9b6fe8; --prio-alta: #5e4596; --prio-media: #3e3463; --prio-baja: #29243a; --prio-sin: #1c1925;
+    --fuego: #ef4444; --fuego-72: #fb923c; --fuego-viejo: #f5cd5c; --borde-fuego: #13111a; --sin-evidencia: #6f6a7d;
+    --salud: #14a0a0; --salud-palida: #1f4d4d; --exposicion: #a9a4b8; --barra: #14a0a0;
+    --critico: #f87171; --atencion: #fbbf24; --critico-suave: #4a1d1d; --atencion-suave: #45340f; --expuesto-suave: #123a3a;
+    --seleccion: #16302f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #13111a; --surface: #1c1925; --fg: #ece9f4; --muted: #aaa4ba; --line: #312d3d; --line-strong: #4b4559;
+  --territorio: #9b6fe8; --prio-alta: #5e4596; --prio-media: #3e3463; --prio-baja: #29243a; --prio-sin: #1c1925;
+  --fuego: #ef4444; --fuego-72: #fb923c; --fuego-viejo: #f5cd5c; --borde-fuego: #13111a; --sin-evidencia: #6f6a7d;
+  --salud: #14a0a0; --salud-palida: #1f4d4d; --exposicion: #a9a4b8; --barra: #14a0a0;
+  --critico: #f87171; --atencion: #fbbf24; --critico-suave: #4a1d1d; --atencion-suave: #45340f; --expuesto-suave: #123a3a;
+  --seleccion: #16302f;
+  color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--font-body); }
+.envoltura {
+  max-width: 1280px; margin: 0 auto; display: grid; gap: 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+}
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; line-height: 1.05; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.9rem; }
+h3 { font-size: 1.3rem; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--territorio); }
+.etiqueta { font-size: .78rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 600; }
+.tenue { color: var(--muted); }
+.chico { font-size: .86rem; }
+
+/* Portada y cifras */
+.portada { display: grid; gap: 12px; max-width: 74ch; }
+.portada h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); }
+.portada .lede { font-size: 1.15rem; }
+.aviso { font-size: .85rem; color: var(--muted); border-left: 3px solid var(--line-strong); padding-left: 10px; }
+.cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.cifra { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 2px; align-content: start; }
+.cifra .valor { font-family: var(--font-display); font-size: 2.7rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.cifra .que { font-weight: 600; }
+.cifra .detalle { font-size: .85rem; color: var(--muted); }
+.cifra.alerta { border-color: var(--critico); box-shadow: inset 4px 0 0 var(--critico); }
+
+/* Tablero: mapa (territorio) + panel de red */
+.tablero { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1000px) { .tablero { grid-template-columns: minmax(0, 1fr); } }
+.tarjeta { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 12px; min-width: 0; align-content: start; }
+.capas { display: flex; flex-wrap: wrap; gap: 6px; }
+.capas label { display: inline-flex; align-items: center; gap: 6px; font-size: .84rem; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px 3px 8px; cursor: pointer; user-select: none; }
+.capas input { margin: 0; accent-color: var(--territorio); }
+.capas input:focus-visible + span { outline: 2px solid var(--territorio); outline-offset: 2px; }
+.boton { font: 600 .85rem var(--font-body); color: var(--fg); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.boton:hover { border-color: var(--territorio); }
+.boton:focus-visible { outline: 2px solid var(--territorio); outline-offset: 2px; }
+.mapa-marco { position: relative; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); }
+#mapa { display: block; width: 100%; height: auto; touch-action: none; cursor: grab; }
+#mapa:active { cursor: grabbing; }
+.ayuda { font-size: .8rem; color: var(--muted); }
+.tip {
+  position: absolute; left: 0; top: 0; z-index: 5; pointer-events: none; max-width: 310px;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--line-strong); border-radius: 6px;
+  padding: 8px 10px; font-size: .85rem; line-height: 1.4; box-shadow: 0 4px 14px rgb(0 0 0 / .18);
+}
+
+/* Capas del mapa */
+.distrito { stroke: var(--territorio); stroke-width: .7; vector-effect: non-scaling-stroke; cursor: pointer; }
+.distrito:hover { stroke-width: 2.4; }
+.distrito.marcado { stroke-width: 3; }
+.p-alta { fill: var(--prio-alta); } .p-media { fill: var(--prio-media); } .p-baja { fill: var(--prio-baja); } .p-sin { fill: var(--prio-sin); }
+.provincia { fill: none; stroke: var(--territorio); stroke-width: 2.4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.zona { fill: var(--exposicion); stroke: var(--exposicion); stroke-dasharray: 4 3; stroke-width: 1; vector-effect: non-scaling-stroke; pointer-events: none; }
+.zona.probables { fill-opacity: .07; stroke-opacity: .55; }
+.zona.recientes { fill-opacity: .17; }
+/* Fuego: el color dice cuándo fue la última detección; gris = no es incendio forestal probable */
+.c-24 { fill: var(--fuego); } .c-72 { fill: var(--fuego-72); } .c-viejo { fill: var(--fuego-viejo); } .c-gris { fill: var(--sin-evidencia); }
+.foco { stroke: var(--surface); stroke-width: .4; vector-effect: non-scaling-stroke; }
+.foco.c-gris { fill-opacity: .7; }
+.llama { stroke: var(--borde-fuego); stroke-width: .9; cursor: pointer; }
+.forma-gris { fill: var(--sin-evidencia); stroke: var(--surface); stroke-width: 1.2; cursor: pointer; }
+.forma-x { stroke: var(--surface); stroke-width: 1.6; stroke-linecap: round; }
+/* Red de salud del hospital elegido */
+.enlace { stroke: var(--salud); stroke-width: 1.5; vector-effect: non-scaling-stroke; fill: none; pointer-events: none; }
+.enlace.essalud { stroke-dasharray: 5 3; }
+.enlace.noexp { stroke-width: .8; opacity: .45; }
+.nodo-fondo { fill: var(--salud); stroke: var(--surface); stroke-width: 1.2; }
+.nodo-fondo.ref { fill: var(--surface); stroke: var(--salud); stroke-width: 2.2; }
+.nodo-fondo.noexp { fill: var(--salud-palida); stroke: var(--surface); }
+.nodo-cruz { stroke: var(--surface); stroke-width: 1.8; stroke-linecap: round; fill: none; }
+.nodo-cruz.ref { stroke: var(--salud); }
+.nodo-anillo { fill: none; stroke-width: 2.6; }
+.nodo-anillo.critico { stroke: var(--critico); } .nodo-anillo.atencion { stroke: var(--atencion); }
+.punto-salud { cursor: pointer; }
+.punto-salud.resaltado .nodo-fondo { stroke: var(--fg); stroke-width: 2.6; }
+
+/* Leyenda */
+.leyenda { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px 20px; font-size: .82rem; border-top: 1px solid var(--line); padding-top: 12px; }
+.leyenda > div { display: grid; gap: 5px; align-content: start; }
+.leyenda .fila { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.leyenda dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; margin: 0; align-items: start; }
+.leyenda dt { margin: 0; padding-top: 2px; } .leyenda dd { margin: 0; }
+.sw { display: inline-block; width: 16px; height: 11px; border-radius: 2px; vertical-align: middle; border: 1px solid var(--line-strong); }
+.linea { display: inline-block; width: 18px; vertical-align: middle; margin-right: 4px; border-top: 2px solid var(--territorio); }
+.linea.gruesa { border-top-width: 4px; }
+.linea.punteada { border-top: 2px dashed var(--exposicion); }
+.linea.salud { border-top: 2px solid var(--salud); }
+.linea.salud-pt { border-top: 2px dashed var(--salud); }
+.pt { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin-right: 4px; }
+.ico { display: inline-grid; place-items: center; width: 13px; height: 13px; font: 700 11px/1 Arial, sans-serif; vertical-align: middle; margin-right: 4px; background: var(--salud); color: var(--surface); border-radius: 2px; }
+.ico.circ { border-radius: 50%; }
+.ico.hueco { background: var(--surface); color: var(--salud); box-shadow: inset 0 0 0 2px var(--salud); }
+.ico.palido { background: var(--salud-palida); }
+.ico.anillo-c { box-shadow: 0 0 0 2px var(--critico); } .ico.anillo-a { box-shadow: 0 0 0 2px var(--atencion); }
+
+/* Panel de red: lista de hospitales (selector + barras) y árbol */
+.lista-h { display: grid; gap: 4px; }
+.hosp { display: grid; grid-template-columns: minmax(0, 1fr) 3rem; gap: 2px 8px; align-items: center; text-align: left; width: 100%;
+  font: inherit; color: var(--fg); background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 6px 8px; cursor: pointer; }
+.hosp:hover { border-color: var(--line-strong); }
+.hosp:focus-visible { outline: 2px solid var(--salud); outline-offset: 1px; }
+.hosp[aria-pressed="true"] { background: var(--seleccion); border-color: var(--salud); box-shadow: inset 3px 0 0 var(--salud); }
+.hosp .nombre { font-weight: 600; font-size: .9rem; line-height: 1.2; }
+.hosp .val { grid-row: span 2; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.05rem; }
+.hosp .pista { height: 8px; background: var(--bg); border-radius: 0 4px 4px 0; }
+.hosp .relleno { display: block; height: 100%; background: var(--barra); border-radius: 0 4px 4px 0; min-width: 2px; }
+.hosp .sub { grid-column: 1 / -1; font-size: .76rem; color: var(--muted); }
+.resumen-h { font-size: .88rem; border-left: 3px solid var(--salud); padding-left: 10px; }
+.arbol-marco { overflow: auto; max-height: 460px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); position: relative; }
+.arbol-enlace { fill: none; stroke: var(--line-strong); stroke-width: 1.2; }
+.arbol-enlace.essalud { stroke-dasharray: 4 3; }
+.arbol-nodo { cursor: pointer; }
+.arbol-nodo circle { stroke-width: 1.8; }
+.a-critico { fill: var(--critico); stroke: var(--critico); } .a-atencion { fill: var(--atencion); stroke: var(--atencion); }
+.a-expuesto { fill: var(--salud); stroke: var(--salud); } .a-sin { fill: var(--line-strong); stroke: var(--line-strong); }
+.arbol-nodo circle.sin4g { fill: var(--surface); }
+.arbol-nodo text { fill: var(--fg); font: 12px var(--font-body); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.arbol-nodo text .min { fill: var(--muted); }
+.arbol-nodo.raiz text { font-weight: 700; }
+.arbol-nodo:hover text { text-decoration: underline; }
+
+/* Tablas */
+.dos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1000px) { .dos { grid-template-columns: minmax(0, 1fr); } }
+.tabla-marco { overflow-x: auto; }
+.tabla-marco.alta { max-height: 420px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .87rem; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; padding: 6px; border-bottom: 1px solid var(--line-strong); position: sticky; top: 0; background: var(--surface); }
+td { padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+tbody.clic tr { cursor: pointer; }
+tbody.clic tr:hover, tbody.clic tr:focus-visible { background: var(--bg); outline: none; }
+tbody.clic tr:focus-visible td:first-child { box-shadow: inset 3px 0 0 var(--territorio); }
+.sub { display: block; font-size: .78rem; color: var(--muted); }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .74rem; font-weight: 700; white-space: nowrap; border: 1px solid transparent; }
+.chip.critico { background: var(--critico-suave); color: var(--fg); border-color: var(--critico); }
+.chip.atencion { background: var(--atencion-suave); color: var(--fg); border-color: var(--atencion); }
+.chip.expuesto { background: var(--expuesto-suave); color: var(--fg); border-color: var(--salud); }
+
+/* Barras de una sola serie (el título las nombra) */
+.barras { display: grid; gap: 10px; }
+.barra { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) 4rem; align-items: center; gap: 8px; font-size: .86rem; }
+.barra .nombre { overflow-wrap: anywhere; line-height: 1.25; }
+.barra .pista { height: 10px; background: var(--bg); border-radius: 0 4px 4px 0; }
+.barra .relleno { display: block; height: 100%; background: var(--territorio); border-radius: 0 4px 4px 0; min-width: 2px; }
+.barra .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+@media (max-width: 520px) { .barra { grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) 3.4rem; } }
+
+/* Secciones de lectura */
+.seccion { display: grid; gap: 16px; }
+.intro { max-width: 76ch; display: grid; gap: 8px; }
+.pistas { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.pista-c { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; background: var(--surface); display: grid; gap: 4px; align-content: start; }
+.pista-c b { font-family: var(--font-display); font-size: 1.15rem; font-weight: 600; }
+.hallazgos { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
+.hallazgo { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 10px; align-content: start; }
+.hallazgo .grande { font-family: var(--font-display); font-size: 2.2rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.lectura { max-width: 76ch; display: grid; gap: 10px; }
+ol.pasos { margin: 0; padding-left: 1.3rem; display: grid; gap: 8px; }
+ul.limites { margin: 0; padding-left: 1.2rem; display: grid; gap: 6px; }
+.pie { font-size: .85rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 6px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="envoltura">
+
+  <header class="portada">
+    <span class="etiqueta">Parte de situación · Incendios forestales · Junín</span>
+    <h1>¿A quién afecta el fuego en Junín y puede responder la red de salud?</h1>
+    <p class="lede">Qué focos de calor son probablemente incendios forestales, a cuántas personas tienen cerca y qué puestos de salud expuestos no tienen señal ni un hospital a mano.</p>
+    <p class="tenue">Focos de calor satelitales del <span data-txt="desde"></span> al <span data-txt="hasta"></span> · corte <span data-txt="corte"></span> (hora de Lima)</p>
+    <p class="aviso">Análisis académico independiente con datos abiertos (curso Ciencia de Datos con Python). No es un producto oficial del Gobierno Regional de Junín, de la DIRESA ni de EsSalud, y no reemplaza los reportes del COEN, INDECI o SERFOR.</p>
+  </header>
+
+  <section class="cifras" aria-label="Cifras clave">
+    <div class="cifra">
+      <span class="valor" data-num="recientes"></span>
+      <span class="que">incendios forestales probables con actividad en las últimas 72 h</span>
+      <span class="detalle"><span data-num="probables"></span> probables en 7 días, de <span data-num="incendios"></span> grupos de focos</span>
+    </div>
+    <div class="cifra">
+      <span class="valor" data-num="poblacion_recientes"></span>
+      <span class="que">personas a 5 km o menos de esos incendios</span>
+      <span class="detalle"><span data-num="poblacion_probables"></span> si se cuentan los 7 días · WorldPop 2026, sin doble conteo</span>
+    </div>
+    <div class="cifra">
+      <span class="valor" data-num="salud_recientes"></span>
+      <span class="que">establecimientos de salud a 5 km o menos</span>
+      <span class="detalle"><span data-num="salud_probables"></span> en 7 días · RENIPRESS, 30/09/2026</span>
+    </div>
+    <div class="cifra alerta">
+      <span class="valor" data-num="criticos"></span>
+      <span class="que">puntos críticos de la red pública</span>
+      <span class="detalle">expuestos, sin 4G garantizado y a más de 2 h de su hospital · <span data-num="atencion"></span> más en atención</span>
+    </div>
+  </section>
+
+  <section class="tablero">
+    <div class="tarjeta">
+      <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:8px">
+        <h2>Dónde está el fuego y qué red de salud lo atiende</h2>
+        <button class="boton" id="ver-todo" type="button">Ver toda la región</button>
+      </div>
+      <div class="capas" role="group" aria-label="Capas del mapa">
+        <label><input type="checkbox" id="c-distritos" data-capa="distritos" checked><span>Prioridad por distrito</span></label>
+        <label><input type="checkbox" id="c-recientes" data-capa="zonaRecientes" checked><span>5 km de incendios recientes</span></label>
+        <label><input type="checkbox" id="c-probables" data-capa="zonaProbables"><span>5 km de incendios probables (7 días)</span></label>
+        <label><input type="checkbox" id="c-focos" data-capa="focos" checked><span>Focos de calor</span></label>
+        <label><input type="checkbox" id="c-incendios" data-capa="incendios" checked><span>Incendios</span></label>
+        <label><input type="checkbox" id="c-red" data-capa="red" checked><span>Red del hospital elegido</span></label>
+      </div>
+      <div class="mapa-marco">
+        <svg id="mapa" role="img" aria-label="Mapa de Junín con la prioridad de cada distrito, los incendios y la red del hospital elegido"></svg>
+        <div class="tip" id="tip-mapa" hidden></div>
+      </div>
+      <p class="ayuda">Pase el cursor sobre un distrito, un incendio o un establecimiento para ver el detalle. Use la rueda o pellizque para acercar y arrastre para moverse. Un clic en un distrito lo centra.</p>
+      <div class="leyenda">
+        <div>
+          <span class="etiqueta">Territorio · prioridad del distrito</span>
+          <dl>
+            <dt><span class="sw" style="background:var(--prio-alta)"></span></dt><dd><b>Alta:</b> tiene un incendio forestal probable con actividad en las últimas 72 h</dd>
+            <dt><span class="sw" style="background:var(--prio-media)"></span></dt><dd><b>Media:</b> tiene focos en las últimas 72 h, pero sin evidencia de incendio forestal</dd>
+            <dt><span class="sw" style="background:var(--prio-baja)"></span></dt><dd><b>Baja:</b> solo tiene focos de hace más de 72 h</dd>
+            <dt><span class="sw" style="background:var(--prio-sin)"></span></dt><dd><b>Sin focos</b> en los últimos 7 días</dd>
+          </dl>
+          <span class="fila"><span><span class="linea gruesa"></span>límite de provincia</span><span><span class="linea"></span>límite de distrito</span></span>
+        </div>
+        <div>
+          <span class="etiqueta">Fuego · el color dice cuándo fue la última detección</span>
+          <span class="fila"><span><span class="pt" style="background:var(--fuego)"></span>hace menos de 24 h</span><span><span class="pt" style="background:var(--fuego-72)"></span>hace 24 a 72 h</span><span><span class="pt" style="background:var(--fuego-viejo)"></span>hace más de 72 h</span></span>
+          <dl>
+            <dt><svg width="16" height="18" viewBox="-7 -10 14 19" aria-hidden="true"><path class="llama c-24" d="M0,-9 C4,-5 6,-1 5,3 C4.2,6.5 1.8,8 0,8 C-1.8,8 -4.2,6.5 -5,3 C-5.8,0 -3.6,-2.6 -2.4,-4.8 C-1.8,-2.6 -0.6,-1.6 0.6,-1.4 C0.4,-4 -0.4,-6.6 0,-9 Z"/></svg></dt>
+            <dd><b>Incendio forestal probable</b>, con el color de su última detección. Los puntos de colores son sus focos de calor.</dd>
+            <dt><span class="pt" style="background:var(--sin-evidencia)"></span></dt>
+            <dd><b>En gris, lo que no es incendio forestal probable:</b> focos por verificar (●),
+              <svg width="12" height="12" viewBox="-7 -7 14 14" aria-hidden="true" style="vertical-align:middle"><path class="forma-gris" d="M0,-6 L6,5 L-6,5 Z"/></svg> quema agropecuaria y
+              <svg width="12" height="12" viewBox="-7 -7 14 14" aria-hidden="true" style="vertical-align:middle"><rect class="forma-gris" x="-5.5" y="-5.5" width="11" height="11" rx="1.5"/><path class="forma-x" d="M-2.6,-2.6L2.6,2.6M2.6,-2.6L-2.6,2.6"/></svg> fuente no forestal (ciudad o industria).</dd>
+          </dl>
+          <span><span class="linea punteada"></span>5 km alrededor de los focos: es el radio donde se cuenta a la población, no el avance del fuego.</span>
+        </div>
+        <div>
+          <span class="etiqueta">Red de salud · solo la del hospital elegido</span>
+          <span class="fila"><span><span class="linea salud"></span><span class="ico">+</span>DIRESA</span><span><span class="linea salud-pt"></span><span class="ico circ">+</span>EsSalud</span><span>línea = a quién refiere</span></span>
+          <span class="fila"><span><span class="ico hueco">+</span>hospital o cabecera de referencia</span><span><span class="ico palido">+</span>no expuesto</span></span>
+          <span class="fila"><span><span class="ico anillo-c">+</span>crítico</span><span><span class="ico anillo-a">+</span>atención</span><span><span class="ico">+</span>expuesto</span></span>
+        </div>
+      </div>
+    </div>
+
+    <aside class="tarjeta">
+      <span class="etiqueta">Red de salud</span>
+      <h3>Hospital de referencia</h3>
+      <p class="tenue chico">Elija un hospital: el mapa y el árbol muestran solo su red. El número es cuántos establecimientos que refieren a él están a 5 km o menos de un incendio forestal probable.</p>
+      <div class="lista-h" id="lista-hospitales" role="group" aria-label="Hospitales de referencia"></div>
+      <p class="resumen-h" id="resumen-hospital"></p>
+      <label class="chico"><input type="checkbox" id="arbol-todos"> mostrar también los establecimientos no expuestos</label>
+      <div class="arbol-marco"><svg id="arbol" role="img" aria-label="Árbol de referencia del hospital elegido"></svg><div class="tip" id="tip-arbol" hidden></div></div>
+      <p class="tenue chico">Árbol: <span class="chip critico">crítico</span> <span class="chip atencion">atención</span> <span class="chip expuesto">expuesto</span> y gris = no expuesto. Círculo hueco = sin 4G garantizado. Minutos = traslado estimado al hospital. Un clic en un nombre lo ubica en el mapa.</p>
+    </aside>
+  </section>
+
+  <section class="dos">
+    <div class="tarjeta">
+      <h3>Distritos de prioridad alta</h3>
+      <p class="tenue chico">Tienen un incendio forestal probable con actividad en las últimas 72 h. Seleccione una fila para verla en el mapa.</p>
+      <div class="tabla-marco">
+        <table>
+          <thead><tr><th>Distrito</th><th class="n">Focos 72 h</th><th class="n">Personas ≤ 5 km</th><th class="n">Salud ≤ 5 km</th><th class="n">Críticos</th></tr></thead>
+          <tbody id="tabla-alta" class="clic"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="tarjeta">
+      <h3 id="titulo-criticos">Establecimientos que necesitan un plan de comunicación y traslado</h3>
+      <p class="tenue chico"><b>Crítico:</b> primer nivel, a 5 km o menos de un incendio forestal probable, sin 4G garantizado y a más de 2 h de su hospital. <b>Atención:</b> cumple solo una de las dos condiciones. Seleccione una fila para verla en el mapa.</p>
+      <div class="tabla-marco alta">
+        <table>
+          <thead><tr><th>Establecimiento</th><th class="n">Traslado</th><th>Señal</th></tr></thead>
+          <tbody id="tabla-criticos" class="clic"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="seccion">
+    <div class="intro">
+      <span class="etiqueta">Criterios de evidencia</span>
+      <h2>¿Es un incendio real?</h2>
+      <p>Un foco de calor solo dice que un píxel de 375 m estaba más caliente de lo normal. Puede ser un incendio forestal, una quema de chacra o una fuente de calor de una ciudad o una industria. Para separar los casos se combinan cuatro pistas, todas de datos abiertos:</p>
+    </div>
+    <div class="pistas">
+      <div class="pista-c"><b>Persistencia</b><span class="chico">El fuego aparece en 2 o más pasadas del satélite, no en un solo destello.</span><span class="tenue chico">NASA FIRMS</span></div>
+      <div class="pista-c"><b>Coincidencia</b><span class="chico">Lo detectan 2 o más de los 3 satélites con sensor VIIRS.</span><span class="tenue chico">NASA FIRMS</span></div>
+      <div class="pista-c"><b>Qué arde</b><span class="chico">La mayoría de los focos cae en bosque, arbustal o pastizal, y no en cultivos ni zonas construidas.</span><span class="tenue chico">ESA WorldCover 2021, 10 m</span></div>
+      <div class="pista-c"><b>Luz nocturna</b><span class="chico">Un foco en un píxel muy iluminado de noche (≥ <span data-txt="umbral_luz"></span> nW/cm²/sr) sugiere ciudad o industria.</span><span class="tenue chico">VIIRS, luces nocturnas 2021</span></div>
+    </div>
+    <div class="dos">
+      <div class="tarjeta">
+        <h3>Grupos de focos según su evidencia</h3>
+        <div class="barras" id="barras-evidencia"></div>
+        <p class="tenue chico"><b>Incendio forestal probable:</b> 3 o más focos, vistos en 2 o más pasadas o por 2 o más satélites, y la mayoría en vegetación natural. <b>Por verificar:</b> 1 o 2 focos o una sola mirada; no se cuentan en la exposición.</p>
+      </div>
+      <div class="tarjeta">
+        <h3>Lo que los criterios no resuelven</h3>
+        <p class="chico">Reducen las falsas alarmas, pero no recuperan incendios que las nubes o el humo ocultaron al satélite. Por eso se mantiene la ventana de 72 h y los focos por verificar siguen visibles en gris. Una quema de pastos en la sierra cae en "pastizal" igual que un incendio: WorldCover no distingue la intención. La confirmación definitiva requiere imágenes Sentinel-2 o el reporte de campo.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="seccion lectura">
+    <span class="etiqueta">Red de salud</span>
+    <h2>¿Puede responder la red de salud?</h2>
+    <p>La mayoría de los establecimientos cerca del fuego son puestos y centros de salud de primer nivel. Si reciben heridos, necesitan dos cosas: <b>señal para una teleconsulta</b> con su hospital y un <b>traslado</b> posible. Por eso cada establecimiento se une a su referencia: en la DIRESA, cabecera de microrred, luego hospital de la red y luego hospital regional; en EsSalud, el hospital EsSalud más rápido de alcanzar. El tiempo de traslado se estima sobre el mapa de fricción motorizada del Malaria Atlas Project, y la señal con la cobertura 4G garantizada que los operadores declaran a OSIPTEL.</p>
+    <p><span id="red-general"></span></p>
+  </section>
+
+  <section class="seccion">
+    <h2>Tres hallazgos</h2>
+    <div class="hallazgos">
+      <article class="hallazgo">
+        <span class="etiqueta">Los criterios cambian la cifra</span>
+        <h3 id="criterios-titulo"></h3>
+        <div class="barras" id="barras-totales" aria-label="Personas a 5 km o menos según qué se cuenta como incendio"></div>
+        <p id="criterios-texto"></p>
+      </article>
+      <article class="hallazgo">
+        <span class="etiqueta">Tamaño no es exposición</span>
+        <h3>El incendio más grande tiene poca gente cerca</h3>
+        <span class="grande" id="mayor-pob"></span>
+        <p id="mayor-texto"></p>
+      </article>
+      <article class="hallazgo">
+        <span class="etiqueta">La red de salud</span>
+        <h3>El riesgo está en la selva y en la falta de señal</h3>
+        <span class="grande" id="red-grande"></span>
+        <p id="red-texto"></p>
+      </article>
+    </div>
+  </section>
+
+  <section class="seccion lectura">
+    <h2>Cómo se hizo</h2>
+    <ol class="pasos">
+      <li><b>Focos de calor.</b> Detecciones VIIRS (píxeles de 375 m) de tres satélites, últimos 7 días, de NASA FIRMS, en hora de Lima y dentro de Junín.</li>
+      <li><b>Incendios.</b> Dos focos son del mismo incendio si están a 1 km o menos y a 48 horas o menos. Activo: último foco hace menos de 24 h; en observación: entre 24 y 72 h.</li>
+      <li><b>Evidencia.</b> Persistencia, coincidencia de satélites, cobertura del suelo (WorldCover) y luz nocturna clasifican cada incendio en cuatro niveles.</li>
+      <li><b>Zona de 5 km y población.</b> Círculos de 5 km alrededor de los focos de incendios probables, unidos para no contar dos veces; suma del raster WorldPop 2026 con estadística zonal.</li>
+      <li><b>Salud.</b> Establecimientos activos y categorizados de RENIPRESS a 5 km o menos de un incendio probable.</li>
+      <li><b>Red de referencia.</b> Grafo aproximado con RENIPRESS (red, microrred y categoría) para la DIRESA y EsSalud; tiempo de traslado con el camino de menor costo sobre el raster de fricción; señal con la cobertura 4G de OSIPTEL del centro poblado más cercano.</li>
+      <li><b>Alerta.</b> Crítico o atención según exposición, nivel, 4G y tiempo de traslado; resumen por distrito y por hospital.</li>
+    </ol>
+  </section>
+
+  <section class="seccion lectura">
+    <h2>Lo que estos datos no dicen</h2>
+    <ul class="limites">
+      <li>Un foco de calor no es un incendio confirmado, y las nubes pueden ocultar incendios reales. "Probable" no es "confirmado".</li>
+      <li>Estar a 5 km no es estar damnificado. Es una medida de cercanía para ordenar la atención.</li>
+      <li>El grafo es una aproximación: RENIPRESS trae la red y la microrred, no los flujos oficiales de referencia, que define cada DIRESA o red asistencial.</li>
+      <li>El tiempo de traslado es modelado (vías y terreno de 2019, vehículo disponible); no considera ríos navegables ni el estado de las carreteras, y en la selva suele subestimar.</li>
+      <li>La cobertura 4G es la que declaran los operadores a OSIPTEL. No hay datos abiertos de ambulancias ni de los establecimientos con telesalud, aunque el DL 1490 obliga a publicarlos.</li>
+      <li>WorldCover es de 2021 y los límites distritales del Censo 2017.</li>
+    </ul>
+  </section>
+
+  <footer class="pie">
+    <span>Fuentes: NASA FIRMS (VIIRS S-NPP, NOAA-20, NOAA-21) · ESA WorldCover 2021 (Microsoft Planetary Computer) · Luces nocturnas VIIRS 2021 · WorldPop 2026 · RENIPRESS, SUSALUD · OSIPTEL, cobertura móvil por centro poblado (2025) · Malaria Atlas Project, fricción motorizada 2019 (Weiss et al., 2020) · INEI, límites distritales 2017.</span>
+    <span>Código y datos: <a href="https://github.com/diegosimemirror/incendios-2026" target="_blank" rel="noopener">github.com/diegosimemirror/incendios-2026</a></span>
+  </footer>
+</div>
+
+<script type="application/json" id="datos-web">__DATOS_WEB__</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+(() => {
+  const D = JSON.parse(document.getElementById("datos-web").textContent);
+  const C = D.cifras;
+  const nf = new Intl.NumberFormat("es-PE", { maximumFractionDigits: 0 });
+  const n = v => nf.format(Math.round(Number(v) || 0));
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const tit = s => String(s ?? "").toLowerCase().replace(/(^|[\s(-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+  const corto = s => tit(String(s ?? "").replace(/^HOSPITAL\s+(DE APOYO\s+|NACIONAL DEL CENTRO\s+|NACIONAL\s+|REGIONAL DOCENTE DE MEDICINA TROPICAL DR\.\s+|II\s+|SELVA CENTRAL Y ENFERMEDADES TROPICALES\s+)?/i, "H. ").replace(/\s+/g, " "));
+  const sinMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const ORDEN = { "Crítico": 0, "Atención": 1, "Expuesto": 2, "Sin exposición": 3 };
+  const claseAlerta = a => ({ "Crítico": "critico", "Atención": "atencion", "Expuesto": "expuesto" }[a] || "sin");
+  const porCodigo = new Map(D.red.map(r => [r.COD_IPRESS, r]));
+  // Un solo código de color para el tiempo, igual en focos e incendios
+  const claseTiempo = h => (h < 24 ? "c-24" : h < 72 ? "c-72" : "c-viejo");
+  const claseEstado = { "Activo": "c-24", "En observación": "c-72", "Sin actividad reciente": "c-viejo" };
+
+  // ---- Cifras y textos fijos ----
+  document.querySelectorAll("[data-num]").forEach(el => { el.textContent = n(C[el.dataset.num]); });
+  document.querySelectorAll("[data-txt]").forEach(el => { el.textContent = C[el.dataset.txt]; });
+
+  function barras(contenedor, filas) {
+    const max = Math.max(...filas.map(f => f.valor), 1);
+    contenedor.innerHTML = filas.map(f =>
+      `<div class="barra" title="${esc(f.nombre)}: ${n(f.valor)}">
+         <span class="nombre">${esc(f.nombre)}${f.nota ? `<span class="sub">${esc(f.nota)}</span>` : ""}</span>
+         <span class="pista"><span class="relleno" style="width:${(100 * f.valor / max).toFixed(1)}%"></span></span>
+         <span class="val">${n(f.valor)}</span>
+       </div>`).join("");
+  }
+  barras(document.getElementById("barras-evidencia"), D.evidencia.map(e => ({ nombre: e.nivel, valor: e.incendios, nota: `${n(e.focos)} focos` })));
+  barras(document.getElementById("barras-totales"), [
+    { nombre: "Cualquier foco", valor: C.poblacion_total },
+    { nombre: "Incendios forestales probables", valor: C.poblacion_probables },
+    { nombre: "Probables con actividad en 72 h", valor: C.poblacion_recientes },
+  ]);
+
+  const may = D.casos.mayor, ais = D.casos.aislado, desc = D.casos.descartado;
+  const fecha = s => `${String(s).slice(8, 10)}/${String(s).slice(5, 7)}`;
+  const pctDudoso = Math.round(100 * (1 - C.poblacion_probables / Math.max(C.poblacion_total, 1)));
+  document.getElementById("criterios-titulo").textContent =
+    `El ${pctDudoso} % de las personas "cerca del fuego" lo estaba de focos sin evidencia de incendio forestal`;
+  document.getElementById("criterios-texto").textContent =
+    `Contando cualquier foco, ${n(C.poblacion_total)} personas estarían a 5 km o menos del fuego. Con los criterios de evidencia ` +
+    `quedan ${n(C.poblacion_probables)}, y ${n(C.poblacion_recientes)} cerca de incendios con actividad en las últimas 72 h. ` +
+    `El foco aislado de ${tit(ais.distrito)} (${tit(ais.provincia)}), con ${n(ais.poblacion_5km)} personas a 5 km, queda por verificar` +
+    (desc ? `; y los ${n(desc.focos)} focos sobre zona construida en ${tit(desc.distrito)} (${tit(desc.provincia)}) se descartan como probable fuente no forestal.` : ".");
+  document.getElementById("mayor-pob").textContent = n(may.poblacion_5km) + " personas";
+  document.getElementById("mayor-texto").textContent =
+    `a 5 km o menos del incendio de ${tit(may.distrito)} (${tit(may.provincia)}): ${n(may.focos)} focos y unas ${n(may.huella_ha)} ha ` +
+    `de huella satelital entre el ${fecha(may.inicio)} y el ${fecha(may.ultimo_foco)}, sobre ${String(may.cobertura_principal).toLowerCase()}. ` +
+    `Para decidir, el tamaño del fuego no basta: importa a quién tiene cerca.`;
+  const h1 = D.hospitales[0];
+  document.getElementById("red-grande").textContent = `${n(C.criticos)} críticos`;
+  document.getElementById("red-texto").textContent =
+    `${n(C.red_expuestos)} de los ${n(C.red_nodos)} establecimientos públicos de Junín (DIRESA y EsSalud) están a 5 km o menos de un ` +
+    `incendio forestal probable. ${n(C.criticos)} son críticos y ${n(C.atencion)} requieren atención. ` +
+    (h1 ? `El ${corto(h1.nombre_hospital_ref)} concentra ${n(h1.criticos)} de los críticos. ` : "") +
+    `En toda la red, ${n(C.red_sin_4g)} establecimientos no tienen 4G garantizado: la teleconsulta no está asegurada justo donde más se necesitaría.`;
+  document.getElementById("red-general").textContent =
+    `En Junín, ${n(C.red_expuestos)} de ${n(C.red_nodos)} establecimientos públicos están a 5 km o menos de un incendio forestal probable ` +
+    `y ${n(C.red_sin_4g)} no tienen 4G garantizado. Use el panel "Hospital de referencia", al lado del mapa, para ver cada red.`;
+
+  // ---- Mapa ----
+  const W = 960, H = 660;
+  const svg = d3.select("#mapa").attr("viewBox", `0 0 ${W} ${H}`);
+  // Coordenadas en metros (UTM 18 Sur): basta una transformación plana, invertida en Y
+  const proj = d3.geoIdentity().reflectY(true).fitExtent([[14, 14], [W - 14, H - 14]], D.distritos);
+  const geo = d3.geoPath(proj);
+  const raiz = svg.append("g");
+  const capa = {};
+  ["distritos", "zonaProbables", "zonaRecientes", "provincias", "redEnlaces", "focos", "incendios", "redNodos"]
+    .forEach(k => { capa[k] = raiz.append("g"); });
+  const grupoCapa = { red: ["redEnlaces", "redNodos"] };   // un interruptor puede manejar varias capas
+
+  function hacerTip(marcoEl, tipEl) {
+    return {
+      mostrar(e, html) {
+        tipEl.innerHTML = html; tipEl.hidden = false;
+        const caja = marcoEl.getBoundingClientRect();
+        const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+        let x = e.clientX - caja.left + marcoEl.scrollLeft + 14, y = e.clientY - caja.top + marcoEl.scrollTop + 14;
+        if (e.clientX - caja.left + 14 + w > caja.width - 6) x -= w + 28;
+        if (e.clientY - caja.top + 14 + h > caja.height - 6) y -= h + 28;
+        tipEl.style.transform = `translate(${Math.max(4, x)}px, ${Math.max(4, y)}px)`;
+      },
+      ocultar() { tipEl.hidden = true; },
+    };
+  }
+  const marco = document.querySelector(".mapa-marco");
+  const tip = hacerTip(marco, document.getElementById("tip-mapa"));
+
+  const claseP = { "1 · Alta": "p-alta", "2 · Media": "p-media", "3 · Baja": "p-baja", "Sin focos": "p-sin" };
+  const distritos = capa.distritos.selectAll("path").data(D.distritos.features).join("path")
+    .attr("d", geo).attr("class", d => "distrito " + (claseP[d.properties.prioridad] || "p-sin"))
+    .on("pointermove", (e, d) => {
+      const p = d.properties;
+      tip.mostrar(e, `<b>${esc(tit(p.nombdist))}</b> · ${esc(tit(p.nombprov))}<br>
+        Prioridad: <b>${esc(p.prioridad.replace(/^\d · /, ""))}</b> · UBIGEO ${esc(p.ubigeo)}<br>
+        Focos en 72 h: ${n(p.focos_72h)} · en 7 días: ${n(p.focos_7d)}<br>
+        Personas a ≤ 5 km de incendios probables: <b>${n(p.poblacion_expuesta)}</b> de ${n(p.poblacion_total)}<br>
+        Establecimientos de salud a ≤ 5 km: ${n(p.establecimientos_expuestos)} · críticos: ${n(p.puntos_criticos)}`);
+    })
+    .on("pointerleave", tip.ocultar)
+    .on("click", (e, d) => acercar(geo.bounds(d), 6));
+
+  capa.zonaProbables.selectAll("path").data(D.zona_probables.features).join("path").attr("d", geo).attr("class", "zona probables");
+  capa.zonaRecientes.selectAll("path").data(D.zona_recientes.features).join("path").attr("d", geo).attr("class", "zona recientes");
+  capa.provincias.selectAll("path").data(D.provincias.features).join("path").attr("d", geo).attr("class", "provincia");
+  capa.zonaProbables.attr("display", "none");
+
+  const xy = (x, y) => proj([x, y]);
+  D.red.forEach(r => { [r.px, r.py] = xy(r.x, r.y); });
+
+  // Focos: color por antigüedad si son de un incendio forestal probable; gris si no
+  const edad = h => (h < 48 ? `hace ${Math.round(h)} h` : `hace ${Math.round(h / 24)} días`);
+  const focos = capa.focos.selectAll("circle").data(D.focos).join("circle")
+    .each(d => { [d.px, d.py] = xy(d[0], d[1]); })
+    .attr("cx", d => d.px).attr("cy", d => d.py)
+    .attr("class", d => `foco ${d[4] === 0 ? claseTiempo(d[2]) : "c-gris"}`)
+    .on("pointermove", (e, d) => tip.mostrar(e, `<b>Foco de calor</b> detectado ${edad(d[2])} · ${esc(d[6])}<br>Potencia ${d[3]} MW · ${esc(d[5])}: ${esc(D.niveles[d[4]].toLowerCase())}`))
+    .on("pointerleave", tip.ocultar);
+
+  // Incendios: llama de color (probable) o forma gris (no es incendio forestal probable)
+  const LLAMA = "M0,-9 C4,-5 6,-1 5,3 C4.2,6.5 1.8,8 0,8 C-1.8,8 -4.2,6.5 -5,3 C-5.8,0 -3.6,-2.6 -2.4,-4.8 C-1.8,-2.6 -0.6,-1.6 0.6,-1.4 C0.4,-4 -0.4,-6.6 0,-9 Z";
+  const incendios = capa.incendios.selectAll("g")
+    .data([...D.incendios].sort((a, b) => (a.evidencia === "Incendio forestal probable") - (b.evidencia === "Incendio forestal probable") || (a.estado === "Activo") - (b.estado === "Activo")))
+    .join("g")
+    .each(function (d) {
+      [d.px, d.py] = xy(d.x, d.y);
+      const g = d3.select(this);
+      if (d.evidencia === "Incendio forestal probable") {
+        d.tam = 0.85 + Math.min(1.3, Math.sqrt(d.focos) / 9);
+        g.append("path").attr("d", LLAMA).attr("class", "llama " + claseEstado[d.estado]);
+      } else if (d.evidencia === "Probable quema agropecuaria") {
+        d.tam = 0.9; g.append("path").attr("d", "M0,-6 L6,5 L-6,5 Z").attr("class", "forma-gris");
+      } else {
+        d.tam = 1; g.append("rect").attr("x", -5.5).attr("y", -5.5).attr("width", 11).attr("height", 11).attr("rx", 1.5).attr("class", "forma-gris");
+        g.append("path").attr("d", "M-2.6,-2.6L2.6,2.6M2.6,-2.6L-2.6,2.6").attr("class", "forma-x");
+      }
+    })
+    .on("pointermove", (e, d) => tip.mostrar(e, `<b>${esc(d.incendio)}</b> · ${esc(d.evidencia)}<br>${esc(d.estado)} · ${esc(tit(d.distrito))} (${esc(tit(d.provincia))})<br>
+      ${n(d.focos)} focos en ${n(d.pasadas)} pasadas, ${n(d.satelites)} satélites · ${esc(String(d.cobertura_principal).toLowerCase())}<br>
+      Huella ${n(d.huella_ha)} ha · del ${esc(d.inicio)} al ${esc(d.ultimo_foco)}<br>
+      Personas a ≤ 5 km: <b>${n(d.poblacion_5km)}</b> · salud a ≤ 5 km: ${n(d.establecimientos_5km)}`))
+    .on("pointerleave", tip.ocultar)
+    .on("click", (e, d) => acercar([[d.px - 25, d.py - 25], [d.px + 25, d.py + 25]], 8));
+
+  function htmlNodo(r) {
+    const padre = porCodigo.get(r.padre);
+    return `<b>${esc(tit(r.NOMBRE))}</b> · ${esc(r.CATEGORIA)} · ${esc(r.sistema)}<br>
+      ${esc(r.rol)}${r.expuesto ? ` · <b>${esc(r.alerta)}</b>` : " · no expuesto"}<br>
+      ${padre ? `Refiere a: ${esc(tit(padre.NOMBRE))}${r.min_a_padre != null ? ` (${n(r.min_a_padre)} min)` : ""}<br>` : ""}
+      ${r.nombre_hospital_ref ? `Hospital: ${esc(corto(r.nombre_hospital_ref))} · ${n(r.min_a_hospital)} min<br>` : ""}
+      Señal: ${esc(r.conectividad)} (${n(r.cobertura_4g_pct)} % del centro poblado con 4G)
+      ${r.expuesto ? `<br>A ${String(r.dist_incendio_km)} km de ${esc(r.incendio_cercano)}` : ""}`;
+  }
+
+  // ---- Estado: hospital elegido ----
+  let kActual = 1;
+  let nodosMapa = d3.select(null);
+  const opciones = D.hospitales.map(h => {
+    const nodo = D.red.find(r => r.NOMBRE === h.nombre_hospital_ref && (r.rol === "Hospital" || r.rol === "Hospital regional"));
+    return nodo ? { codigo: nodo.COD_IPRESS, h } : null;
+  }).filter(Boolean);
+  let elegido = 0;
+
+  // Miembros de la red de un hospital: establecimientos y cabeceras que refieren a él (+ sus padres)
+  function redDe(cod, todos) {
+    const miembros = D.red.filter(r => r.hospital_ref === cod && (r.rol === "Establecimiento" || r.rol === "Cabecera de microrred"));
+    const sel = new Map((todos ? miembros : miembros.filter(r => r.en_ruta_expuesta)).map(r => [r.COD_IPRESS, r]));
+    [...sel.values()].forEach(r => {
+      let p = r.padre;
+      while (p && p !== cod && !sel.has(p) && porCodigo.has(p)) { sel.set(p, porCodigo.get(p)); p = porCodigo.get(p).padre; }
+    });
+    return [...sel.values()];
+  }
+
+  function dibujarRedMapa(cod, nodos) {
+    const hospital = porCodigo.get(cod);
+    const visibles = new Set(nodos.map(r => r.COD_IPRESS).concat(cod));
+    capa.redEnlaces.selectAll("line").data(nodos.filter(r => visibles.has(r.padre)), r => r.COD_IPRESS).join("line")
+      .attr("x1", r => r.px).attr("y1", r => r.py)
+      .attr("x2", r => porCodigo.get(r.padre).px).attr("y2", r => porCodigo.get(r.padre).py)
+      .attr("class", r => `enlace ${r.sistema === "EsSalud" ? "essalud" : ""} ${r.en_ruta_expuesta ? "" : "noexp"}`);
+    const datos = [hospital, ...nodos].sort((a, b) => (a.expuesto === true) - (b.expuesto === true));
+    nodosMapa = capa.redNodos.selectAll("g.punto-salud").data(datos, r => r.COD_IPRESS).join(
+      entra => entra.append("g").attr("class", "punto-salud").each(function (r) {
+        const g = d3.select(this);
+        const ref = !r.expuesto && r.rol !== "Establecimiento";
+        const t = { "Hospital regional": 8, "Hospital": 8, "Cabecera de microrred": 6 }[r.rol] || 5;
+        const clase = "nodo-fondo" + (ref ? " ref" : r.expuesto ? "" : " noexp");
+        if (r.sistema === "EsSalud") g.append("circle").attr("r", t).attr("class", clase);
+        else g.append("rect").attr("x", -t).attr("y", -t).attr("width", 2 * t).attr("height", 2 * t).attr("rx", 1.5).attr("class", clase);
+        g.append("path").attr("d", `M-${t * .55},0H${t * .55}M0,-${t * .55}V${t * .55}`).attr("class", "nodo-cruz" + (ref ? " ref" : ""));
+        if (r.expuesto && (r.alerta === "Crítico" || r.alerta === "Atención")) {
+          const a = t + 3;
+          if (r.sistema === "EsSalud") g.append("circle").attr("r", a).attr("class", "nodo-anillo " + claseAlerta(r.alerta));
+          else g.append("rect").attr("x", -a).attr("y", -a).attr("width", 2 * a).attr("height", 2 * a).attr("rx", 2).attr("class", "nodo-anillo " + claseAlerta(r.alerta));
+        }
+      }).on("pointermove", (e, r) => tip.mostrar(e, htmlNodo(r))).on("pointerleave", tip.ocultar)
+    );
+    reescalar(kActual);
+  }
+
+  // Los símbolos mantienen su tamaño en pantalla al acercar
+  function reescalar(k) {
+    focos.attr("r", 2.3 / k);
+    incendios.attr("transform", d => `translate(${d.px},${d.py}) scale(${d.tam / k})`);
+    nodosMapa.attr("transform", r => `translate(${r.px},${r.py}) scale(${0.9 / k})`);
+  }
+  const zoom = d3.zoom().scaleExtent([1, 16]).translateExtent([[0, 0], [W, H]])
+    .on("zoom", e => { raiz.attr("transform", e.transform); kActual = e.transform.k; reescalar(kActual); });
+  svg.call(zoom);
+
+  function acercar([[x0, y0], [x1, y1]], maximo) {
+    const s = Math.min(maximo, 0.85 / Math.max((x1 - x0) / W, (y1 - y0) / H, 1e-6));
+    const t = d3.zoomIdentity.translate(W / 2, H / 2).scale(s).translate(-(x0 + x1) / 2, -(y0 + y1) / 2);
+    svg.transition().duration(sinMovimiento ? 0 : 700).call(zoom.transform, t);
+  }
+  document.getElementById("ver-todo").addEventListener("click", () => {
+    distritos.classed("marcado", false);
+    svg.transition().duration(sinMovimiento ? 0 : 700).call(zoom.transform, d3.zoomIdentity);
+  });
+  document.querySelectorAll(".capas input").forEach(inp => {
+    inp.addEventListener("change", () => (grupoCapa[inp.dataset.capa] || [inp.dataset.capa])
+      .forEach(k => capa[k].attr("display", inp.checked ? null : "none")));
+  });
+  function verEnMapa(r) {
+    acercar([[r.px - 30, r.py - 30], [r.px + 30, r.py + 30]], 8);
+    nodosMapa.classed("resaltado", d => d.COD_IPRESS === r.COD_IPRESS);
+    marco.scrollIntoView({ behavior: sinMovimiento ? "auto" : "smooth", block: "nearest" });
+  }
+
+  // ---- Panel: lista de hospitales (selector con barras) ----
+  const lista = document.getElementById("lista-hospitales");
+  const maxExp = Math.max(...opciones.map(o => o.h.expuestos), 1);
+  lista.innerHTML = opciones.map((o, i) => `<button type="button" class="hosp" data-i="${i}" aria-pressed="false">
+      <span class="nombre">${esc(corto(o.h.nombre_hospital_ref))}</span>
+      <span class="val">${n(o.h.expuestos)}</span>
+      <span class="pista"><span class="relleno" style="width:${(100 * o.h.expuestos / maxExp).toFixed(1)}%"></span></span>
+      <span class="sub">${esc(o.h.sistema)} · ${n(o.h.criticos)} críticos · ${n(o.h.atencion)} en atención</span>
+    </button>`).join("");
+  lista.querySelectorAll(".hosp").forEach(b => b.addEventListener("click", () => elegir(+b.dataset.i, true)));
+
+  // ---- Árbol de referencia del hospital elegido ----
+  const marcoArbol = document.querySelector(".arbol-marco");
+  const tipArbol = hacerTip(marcoArbol, document.getElementById("tip-arbol"));
+  function dibujarArbol(cod, nodos, sistema) {
+    const svgA = d3.select("#arbol");
+    svgA.selectAll("*").remove();
+    const ids = new Set(nodos.map(r => r.COD_IPRESS));
+    const datos = [{ ...porCodigo.get(cod), padre: null },
+      ...nodos.map(r => ({ ...r, padre: (r.padre === cod || ids.has(r.padre)) ? r.padre : cod }))];
+    const arbol = d3.stratify().id(d => d.COD_IPRESS).parentId(d => d.padre)(datos);
+    arbol.sort((a, b) => d3.ascending(ORDEN[a.data.alerta] ?? 9, ORDEN[b.data.alerta] ?? 9) || d3.ascending(a.data.NOMBRE, b.data.NOMBRE));
+    const dx = 20, dy = 135;
+    d3.tree().nodeSize([dx, dy])(arbol);
+    let x0 = Infinity, x1 = -Infinity;
+    arbol.each(d => { x0 = Math.min(x0, d.x); x1 = Math.max(x1, d.x); });
+    // espacio: a la derecha para las etiquetas de las hojas; arriba para las de nodos intermedios
+    const ancho = arbol.height * dy + 280, alto = x1 - x0 + dx * 2 + 16;
+    svgA.attr("width", ancho).attr("height", alto).attr("viewBox", `${-16} ${x0 - dx - 16} ${ancho} ${alto}`);
+    svgA.append("g").selectAll("path").data(arbol.links()).join("path")
+      .attr("class", d => "arbol-enlace" + (d.target.data.sistema === "EsSalud" ? " essalud" : ""))
+      .attr("d", d3.linkHorizontal().x(d => d.y).y(d => d.x));
+    const nodo = svgA.append("g").selectAll("g").data(arbol.descendants()).join("g")
+      .attr("class", d => "arbol-nodo" + (d.depth === 0 ? " raiz" : ""))
+      .attr("transform", d => `translate(${d.y},${d.x})`)
+      .on("pointermove", (e, d) => tipArbol.mostrar(e, htmlNodo(porCodigo.get(d.id))))
+      .on("pointerleave", tipArbol.ocultar)
+      .on("click", (e, d) => verEnMapa(porCodigo.get(d.id)));
+    nodo.append("circle")
+      .attr("r", d => (d.depth === 0 ? 7 : d.data.rol === "Cabecera de microrred" ? 5.5 : 4.5))
+      .attr("class", d => `a-${d.depth === 0 ? "expuesto" : claseAlerta(d.data.alerta)}${d.data.conectividad !== "4G garantizado" ? " sin4g" : ""}`);
+    // Hojas: etiqueta a la derecha. Hospital y cabeceras: etiqueta encima del nodo (no tapa las líneas)
+    const hoja = d => !d.children;
+    const texto = nodo.append("text")
+      .attr("x", d => (hoja(d) ? 9 : d.depth === 0 ? -6 : 0)).attr("y", d => (hoja(d) ? 0 : -10))
+      .attr("dy", d => (hoja(d) ? "0.32em" : 0))
+      .attr("text-anchor", d => (hoja(d) || d.depth === 0 ? "start" : "middle"));
+    texto.append("tspan").text(d => (d.depth === 0 ? corto(d.data.NOMBRE) : tit(d.data.NOMBRE)));
+    texto.append("tspan").attr("class", "min")
+      .text(d => (d.depth === 0 ? ` · ${sistema}`
+        : hoja(d) ? ` · ${d.data.CATEGORIA} · ${n(d.data.min_a_hospital)} min${d.data.conectividad !== "4G garantizado" ? " · sin 4G" : ""}`
+        : ` · ${n(d.data.min_a_hospital)} min`));
+  }
+
+  // ---- Tabla de críticos y en atención (solo de la red elegida) ----
+  function tablaCriticos(h) {
+    const filas = D.criticos.filter(c => c.nombre_hospital_ref === h.nombre_hospital_ref);
+    document.getElementById("titulo-criticos").textContent = `Plan de comunicación y traslado · red del ${corto(h.nombre_hospital_ref)}`;
+    const cuerpoC = document.getElementById("tabla-criticos");
+    cuerpoC.innerHTML = filas.length ? filas.map(c => {
+      return `<tr tabindex="0" data-cod="${esc(c.COD_IPRESS)}">
+        <td><span class="chip ${claseAlerta(c.alerta)}">${esc(c.alerta)}</span> ${esc(tit(c.NOMBRE))}
+          <span class="sub">${esc(c.CATEGORIA)} · ${esc(tit(c.DISTRITO))} · a ${esc(c.dist_incendio_km)} km de ${esc(c.incendio_cercano)}</span></td>
+        <td class="n">${c.min_a_hospital != null ? n(c.min_a_hospital) + " min" : "—"}</td>
+        <td>${esc(c.conectividad)}<span class="sub">${n(c.cobertura_4g_pct)} % con 4G</span></td></tr>`;
+    }).join("") : `<tr><td colspan="3" class="tenue">Ningún establecimiento de esta red está en situación crítica o de atención.</td></tr>`;
+    cuerpoC.querySelectorAll("tr[data-cod]").forEach(tr => {
+      const ir = () => { const r = porCodigo.get(tr.dataset.cod); if (r) verEnMapa(r); };
+      tr.addEventListener("click", ir);
+      tr.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ir(); } });
+    });
+  }
+
+  function elegir(i, enfocar) {
+    elegido = i;
+    const o = opciones[i];
+    if (!o) return;
+    lista.querySelectorAll(".hosp").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.i === i)));
+    const todos = document.getElementById("arbol-todos").checked;
+    const nodos = redDe(o.codigo, todos);
+    const total = D.red.filter(r => r.hospital_ref === o.codigo && r.rol !== "Hospital" && r.rol !== "Hospital regional").length;
+    document.getElementById("resumen-hospital").innerHTML =
+      `<b>${esc(corto(o.h.nombre_hospital_ref))}</b> (${esc(o.h.sistema)}): de ${n(total)} establecimientos que refieren a él, ` +
+      `<b>${n(o.h.expuestos)}</b> están expuestos al fuego: <b>${n(o.h.criticos)}</b> críticos y ${n(o.h.atencion)} en atención. ` +
+      `Traslado mediano de los expuestos: ${n(o.h.minutos_mediana)} min.`;
+    dibujarRedMapa(o.codigo, nodos);
+    dibujarArbol(o.codigo, nodos, o.h.sistema);
+    tablaCriticos(o.h);
+    if (enfocar) {
+      const puntos = [porCodigo.get(o.codigo), ...nodos];
+      const xs = puntos.map(r => r.px), ys = puntos.map(r => r.py);
+      acercar([[Math.min(...xs) - 20, Math.min(...ys) - 20], [Math.max(...xs) + 20, Math.max(...ys) + 20]], 6);
+    }
+  }
+  document.getElementById("arbol-todos").addEventListener("change", () => elegir(elegido, false));
+
+  // ---- Tabla de prioridad alta (clic = ver en el mapa) ----
+  const cuerpo = document.getElementById("tabla-alta");
+  cuerpo.innerHTML = D.alta.map(d => `<tr tabindex="0" data-ubigeo="${esc(d.ubigeo)}">
+      <td>${esc(tit(d.nombdist))}<span class="sub">${esc(tit(d.nombprov))}</span></td>
+      <td class="n">${n(d.focos_72h)}</td><td class="n">${n(d.poblacion_expuesta)}</td>
+      <td class="n">${n(d.establecimientos_expuestos)}</td><td class="n">${n(d.puntos_criticos)}</td></tr>`).join("");
+  function irA(ubigeo) {
+    const f = D.distritos.features.find(x => x.properties.ubigeo === ubigeo);
+    if (!f) return;
+    distritos.classed("marcado", d => d.properties.ubigeo === ubigeo);
+    acercar(geo.bounds(f), 6);
+    marco.scrollIntoView({ behavior: sinMovimiento ? "auto" : "smooth", block: "nearest" });
+  }
+  cuerpo.querySelectorAll("tr").forEach(tr => {
+    tr.addEventListener("click", () => irA(tr.dataset.ubigeo));
+    tr.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); irA(tr.dataset.ubigeo); } });
+  });
+
+  // Estado inicial: el hospital con más críticos, sin acercar (se ve toda la región)
+  reescalar(1);
+  elegir(0, false);
+})();
+</script>
